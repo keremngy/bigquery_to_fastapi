@@ -1,4 +1,3 @@
-from typing import Annotated
 from math import ceil
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -14,8 +13,8 @@ if __name__ == "__main__":
 
 app = FastAPI()
 security = HTTPBasic()
-credentials = service_account.Credentials.from_service_account_file('empty_key_file.json')
-project_id = 'yourproject'
+credentials = service_account.Credentials.from_service_account_file('APIKEY.json')
+project_id = 'PROJECTID'
 client = bigquery.Client(credentials= credentials,project=project_id)
 
 
@@ -35,7 +34,7 @@ class Item:
         self.date = record['Date']
 
 
-def get_current_username(credentials: Annotated[HTTPBasicCredentials, Depends(security)]):
+def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
     current_username_bytes = credentials.username.encode("utf8")
     correct_username_bytes = b"username"
     is_correct_username = secrets.compare_digest(current_username_bytes, correct_username_bytes)
@@ -48,20 +47,20 @@ def get_current_username(credentials: Annotated[HTTPBasicCredentials, Depends(se
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Basic"},
         )
-        return credentials.username
+    return credentials.username
 
 
 @app.get("/items")
-def read_items(request: Request, skip: int = 0, limit: int = 100):
+def read_items(request: Request, skip: int = 0, limit: int = 100, username: str = Depends(get_current_username)):
     countquery = f"""SELECT COUNT(*) as total_count
-        FROM `yourtable`"""
+        FROM `YOURTABLE`"""
     count_query = client.query(countquery)
     count_result = list(count_query.result())[0]
     total_count = count_result["total_count"]
     total_pages = ceil(total_count / limit)
 
     myquery = f"""SELECT * 
-        FROM `yourtable` 
+        FROM `YOURTABLE` 
         order by id asc
         LIMIT {limit}
         OFFSET {skip}"""
@@ -85,14 +84,14 @@ def read_items(request: Request, skip: int = 0, limit: int = 100):
         "data": item_list,
     }
 @app.get("/lastitems")
-def read_items(skip: int = 0, limit: int = 1000, id: int = None):
+def read_items(skip: int = 0, limit: int = 1000, id: int = None, username: str = Depends(get_current_username)):
     countquery = f"""SELECT COUNT(*) as total_count
-        FROM `yourtable`"""
+        FROM `YOURTABLE`"""
     count_query = client.query(countquery)
     count_result = list(count_query.result())[0]
     total_record_count = count_result["total_count"]
     myquery = f"""SELECT * 
-        FROM `yourtable`"""
+        FROM `YOURTABLE`"""
 
     if id is not None:
         myquery += f" WHERE id > {id}"
